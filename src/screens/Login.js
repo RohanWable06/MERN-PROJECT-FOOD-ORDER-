@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 export default function Login() {
   const URL = "http://localhost:5000/api/loginuser";
+  const navigate=useNavigate();
   const [credentials, setcredentials] = useState({
     email: "",
     password: "",
@@ -15,7 +16,8 @@ export default function Login() {
       .post(URL, credentials)
       .then((res) => {
         if (res.status === 200) {
-          alert("Login Successfully", res.data);
+          localStorage.setItem("authToken",res.data.authToken);
+          navigate("/");
         } else {
           alert("Enter Valid Credentials");
         }

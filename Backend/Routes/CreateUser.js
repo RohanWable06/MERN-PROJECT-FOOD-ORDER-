@@ -2,8 +2,9 @@ const express=require('express')
 const router=express.Router()
 const User=require('../models/User')
 const {body,validationResult }=require('express-validator')
-
-
+const jwt =require("jsonwebtoken")
+const bcrypt = require("bcryptjs")
+const jwtSecrete = "abcabcabcbabcabcb";
 router.post("/createuser",
     [
         body('email',"Please enter valid email").isEmail(),
@@ -16,10 +17,13 @@ router.post("/createuser",
             return resp.status(400).json({errors: errors.array()})
         }
 
+
+    const salt = await bcrypt.genSalt(10);
+    let securePassword = await bcrypt.hash(req.body.password,salt);
     try{
         await User.create({
             name:req.body.name,
-            password:req.body.password,
+            password:securePassword,
             email:req.body.email,
             location:req.body.location
         })
@@ -34,7 +38,15 @@ router.post("/createuser",
 
 
 router.post("/loginuser",
+    [
+        body('email',"Please enter valid email").isEmail(),
+        body('password','Incorrect Password').isLength({ min:5 })
+    ],
     async(req,resp)=>{
+        const errors = validationResult(req);
+        if(!errors.isEmpty()){
+            return resp.status(400).json({errors: errors.array()})
+        }
     try{
         let email=req.body.email;
       let userData =  await User.findOne({email})
@@ -42,10 +54,18 @@ router.post("/loginuser",
         return resp.status(400).json({error: "invalid Credentials"})
       }
 
-      if(req.body.password != userData.password){
+      const pwdCompare= await bcrypt.compare(req.body.password,userData.password)
+      if(!pwdCompare){
         return resp.status(400).json({error: "invalid Password"})
       }
-      return resp.status(200).send(userData);
+      const data = {
+        user:{
+            id:userData.id
+        }
+      }
+
+      const authToken = jwt.sign(data,jwtSecrete)
+      return resp.status(200).json({success : true, authToken : authToken});
 
     }
     catch(error){
